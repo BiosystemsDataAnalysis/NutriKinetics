@@ -192,11 +192,12 @@ server <- function(input, output, session) {
   
   plotData <- function(df) {
     p <- ggplot(data = df)
-    p <- p + geom_point(aes(x = times, 
-                            y = y, 
-                            col = type), 
-                        size = 2)
-    p <- p + geom_line(data = df[df$type == "fit", ], aes(x = times, y = y))
+    #p <- p + geom_point(aes(x = times, 
+    #                        y = y, 
+    #                        col = type), 
+    #                    size = 2)
+    p <- p + geom_point(data=df[df$type=="data",],aes(x = times, y = y, col=type), size = 2)
+    p <- p + geom_line(data = df[df$type == "fit", ], aes(x = times, y = y,col=type)) + scale_color_manual(values = c('indianred1', 'black'))
     if(input$type == "plasma") {
       p <- p + labs(x = "Time (h)", y = "Concentration (nM)")
     }
@@ -271,8 +272,9 @@ server <- function(input, output, session) {
         fit.out  <- doFit(pars, "plasma.res", times, exp_to_fit.data)
         fit.data <- plasma(times, fit.out$par)
     }
+    
     plot.data    <- c(exp_to_fit.data, fit.data)
-
+    
     params.out   <- unlist(fit.out$par)
 
     return(list(plot.data, params.out))

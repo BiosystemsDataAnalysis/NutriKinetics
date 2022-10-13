@@ -1,0 +1,13 @@
+name: NutriKinetics
+title: NutriKinetics
+username:
+account: amsterdamstudygroup
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 7100236
+bundleId: 6398528
+url: https://amsterdamstudygroup.shinyapps.io/NutriKinetics/
+when: 1665651068.62698
+lastSyncTime: 1665651068.62699
+asMultiple: FALSE
+asStatic: FALSE
