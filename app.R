@@ -74,14 +74,15 @@ ui <- fluidPage(
       ),
       conditionalPanel(condition = paste0("input['", "error.type", "'] == 'linear' "),
         sliderInput("errorl",
-                    label = HTML("&epsilon; % of calculated value"),
+                    label = HTML("&epsilon; % of measured value"),
                     value = 0, min = 0, max = 50, step = 0.1)
         ),
       conditionalPanel(condition = paste0("input['", "error.type", "'] == 'constant' "),
                        sliderInput("errorc",
                                    label = HTML("&epsilon;"),
-                                   value = 0, min = 0, max = 5, step = 0.1)
+                                   value = 0, min = 0, max = 1, step = 0.05)
       )
+      # change maximum to 1, in steps of 0.05
   ),
     
     mainPanel(
@@ -223,19 +224,29 @@ server <- function(input, output, session) {
       tau        <- as.numeric(input$tau.u)
       
       pars       <- list(xmax = xmax, ke = ke, tau = tau)
-      exp.data   <- urine(times, pars)
+      # first the theoretical cumulative data is calculated
+      theo_cum.data   <- urine(times, pars)
+      # the theoretical data can be determined by taking the derivative 
+      theo_meas.data <- c(0,diff(theo_cum.data))
       
-    # Add noise
-      if(error.type == "linear") {
-        error      <- (as.numeric(input$errorl) * exp.data / 100.) * 
-                       rnorm(length(exp.data), 0, 1)
+    # Add noise to the theoretical measurement data
+    
+        if(error.type == "linear") {
+        # the error is dependent on the value of the data
+        error      <- (as.numeric(input$errorl) * theo_meas.data / 100.) * 
+                       rnorm(length(theo_meas.data), 0, 1)
       } else if(error.type == "constant" ) {
-        error      <- as.numeric(input$errorc) * rnorm(length(exp.data), 0, 1)
+        # the error is constant
+        error      <- as.numeric(input$errorc) * rnorm(length(theo_meas.data), 0, 1)
       }
-    # Make sure all data points are positive
-      exp.data   <- abs(exp.data + error)
+    
+      # Add the noise to the theoretical measured data and make sure all data points are positive. 
+      # This is an arbitrary step and causes a positive bias for the lower values
+      exp.data   <- abs(theo_meas.data + error)
+      # Make the data cumulative again to generate the data to be fitted
+      exp_to_fit.data <- cumsum(exp.data)
       
-      fit.out    <- doFit(pars, "urine.res", times, exp.data) 
+      fit.out    <- doFit(pars, "urine.res", times, exp_to_fit.data) 
       fit.data   <- urine(times, fit.out$par)
       
     } else if (input$type == "plasma") {
@@ -255,12 +266,12 @@ server <- function(input, output, session) {
           error      <- as.numeric(input$errorc) * rnorm(length(exp.data), 0, 1)
         }
       # Make sure all data points are positive
-        exp.data   <- abs(exp.data + error)
+        exp_to_fit.data   <- abs(exp.data + error)
         
-        fit.out  <- doFit(pars, "plasma.res", times, exp.data)
+        fit.out  <- doFit(pars, "plasma.res", times, exp_to_fit.data)
         fit.data <- plasma(times, fit.out$par)
     }
-    plot.data    <- c(exp.data, fit.data)
+    plot.data    <- c(exp_to_fit.data, fit.data)
 
     params.out   <- unlist(fit.out$par)
 
