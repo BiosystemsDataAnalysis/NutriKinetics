@@ -5,56 +5,64 @@ library(minpack.lm)
 library(DT)
 
 ui <- fluidPage(
+  # stretch main panel to the height of the settings block and
+  # align the update buttons with its bottom (wide screens only)
+  tags$style(HTML("
+    @media (min-width: 768px) {
+      .row:has(> #main) { display: flex; }
+      #main             { display: flex; flex-direction: column; }
+      #update-buttons   { margin-top: auto; margin-bottom: 20px; }
+    }
+  ")),
   titlePanel("Nutrikinetics"),
   
   sidebarLayout(
     sidebarPanel(
       fluidRow(
         column(4, 
-          selectInput("subjects", 
-                      label = "Number of subjects", width = "80px",
-                      choices = c("1", "2", "3", "4", "5",
-                                  "6", "7", "8", "9"),
-                      selected = 9
-          )
+               selectInput("subjects", 
+                           label = "Number of subjects", width = "80px",
+                           choices = c("1":"100"),
+                           selected = 100
+               )
         ),
         column(8,
-          selectInput("times", multiple = TRUE,
-                      label = HTML("Measurement times"),
-                      choices  = sort(c(0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 
-                                 14, 16, 20, 24, 28, 32)),
-                      selected = sort(c(0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 
-                                  14, 16, 20, 24, 28, 32)))
+               selectInput("times", multiple = TRUE,
+                           label = HTML("Measurement times"),
+                           choices  = sort(c(0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 
+                                             14, 16, 20, 24, 28, 32)),
+                           selected = sort(c(0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 
+                                             14, 16, 20, 24, 28, 32)))
         )
       ),
       fluidRow(
         box(width = 6,
-          radioButtons("type", label = "Simulation type",
-                    choices = c("Urine" = "urine",
-                                "Plasma" = "plasma"),
-                     selected = "urine"
-                     )
+            radioButtons("type", label = "Simulation type",
+                         choices = c("Urine" = "urine",
+                                     "Plasma" = "plasma"),
+                         selected = "urine"
+            )
         ),
         box(width = 6,
-          radioButtons("error.type", label = "Error type",
-                     choices = c("Constant" = "constant",
-                                 "Linear" = "linear"),
-                     selected = "constant")
-          )
-        ),
+            radioButtons("error.type", label = "Error type",
+                         choices = c("Constant" = "constant",
+                                     "Linear" = "linear"),
+                         selected = "constant")
+        )
+      ),
       
       conditionalPanel(condition = paste0("input['", "type", "'] == 'urine' "),
-        div(style = "font-size: 12pt;",
-          sliderInput("xmax", 
-                      label = HTML("x<sub>max</sub> (&micro;M)"), 
-                      value = 10, min = 0.1, max = 20, step = 0.1), 
-          sliderInput("ke",
-                      label = HTML("k<sub>e</sub> (h<sup>-1</sup>)"),
-                      value = 0.1, min = 0.01, max = 0.2, step = 0.001),
-          sliderInput("tau.u",
-                      label = HTML("&tau; (h)"),
-                      value = 6, min = 1, max = 10, step = 0.1)
-        )
+                       div(style = "font-size: 12pt;",
+                           sliderInput("xmax", 
+                                       label = HTML("x<sub>max</sub> (&micro;M)"), 
+                                       value = 10, min = 0.1, max = 20, step = 0.1), 
+                           sliderInput("ke",
+                                       label = HTML("k<sub>e</sub> (h<sup>-1</sup>)"),
+                                       value = 0.1, min = 0.01, max = 0.2, step = 0.001),
+                           sliderInput("tau.u",
+                                       label = HTML("&tau; (h)"),
+                                       value = 6, min = 1, max = 10, step = 0.1)
+                       )
       ),
       conditionalPanel(condition = paste0("input['", "type", "'] == 'plasma' "),
                        div(style = "font-size: 12pt;",
@@ -73,47 +81,51 @@ ui <- fluidPage(
                        )
       ),
       conditionalPanel(condition = paste0("input['", "error.type", "'] == 'linear' "),
-        sliderInput("errorl",
-                    label = HTML("&epsilon; % of measured value"),
-                    value = 0, min = 0, max = 50, step = 0.1)
-        ),
+                       sliderInput("errorl",
+                                   label = HTML("&epsilon; % of measured value"),
+                                   value = 0, min = 0, max = 50, step = 0.1)
+      ),
       conditionalPanel(condition = paste0("input['", "error.type", "'] == 'constant' "),
                        sliderInput("errorc",
                                    label = HTML("&epsilon;"),
                                    value = 0, min = 0, max = 1, step = 0.05)
       )
       # change maximum to 1, in steps of 0.05
-  ),
+    ),
     
-    mainPanel(
-      fluidRow(
-        column(6, 
-               div(style = "font-weight: bold;",
-          textOutput("text1")),
-          plotOutput("plot1")),
-        column(6, 
-          dataTableOutput("table"))
-      ),
-      div(style="padding: 20px;"),
-      fluidRow(
-        column(2, actionButton("update.all", "Update all subjects")
-        ),
-        column(1),
-        column(2, actionButton("update.single", "Update this subject")
-#        ),
-#        column(1),
-#        column(2, actionButton("update.error", "Update errors")
-        )
-      )
+    mainPanel(id = "main",
+              fluidRow(
+                column(6,
+                       div(style = "font-weight: bold;",
+                           textOutput("text1")),
+                       plotOutput("plot1", height = "500px")),
+                column(6, 
+                       dataTableOutput("table"),
+                       div(style = "padding: 10px;"),
+                       dataTableOutput("summary_table"))
+              ),
+              div(style="padding: 20px;"),
+              fluidRow(id = "update-buttons",
+                       column(6, style = "text-align: right;",
+                              actionButton("update.all", "Update all subjects"),
+                              actionButton("update.single", "Update this subject",
+                                           style = "margin-left: 10px;")
+                              #          actionButton("update.error", "Update errors",
+                              #                       style = "margin-left: 10px;")
+                       ),
+                       column(6, style = "text-align: right;",
+                              downloadButton("export", "Export to Excel")
+                       )
+              )
     )
   )
 )
 
 server <- function(input, output, session) {
   
-## Functions
-
-###########################
+  ## Functions
+  
+  ###########################
   
   urine <- function(times, params) {
     
@@ -125,10 +137,10 @@ server <- function(input, output, session) {
     y[times < tau] <- 0
     
     return(y)
-
+    
   }
   
-############################
+  ############################
   
   plasma <- function(times, params) {
     
@@ -136,21 +148,21 @@ server <- function(input, output, session) {
     ka             <- params[[2]]
     kel            <- params[[3]]
     tau            <- params[[4]]
-  
-  # Make sure ka and kel are not equal
+    
+    # Make sure ka and kel are not equal
     
     if(abs(ka - kel) < 0.01) {
       ka <- kel + 0.01
     }
     
     y              <- Cd*(ka/(ka - kel))*(exp(-kel*(times - tau)) - 
-                      exp(-ka*(times - tau)))
+                                            exp(-ka*(times - tau)))
     y[times < tau] <- 0
-
+    
     return(y)
   }
-
-##############################
+  
+  ##############################
   # Difference between calculated and "measured" values
   
   urine.res <- function(parms, times, y) {
@@ -158,7 +170,7 @@ server <- function(input, output, session) {
     return(res)
   } 
   
-############################## 
+  ############################## 
   # Difference between calculated and "measured" values
   
   plasma.res <- function(parms, times, y) {
@@ -167,16 +179,16 @@ server <- function(input, output, session) {
   } 
   
   
-##############################
+  ##############################
   
   doFit <- function(pars, fn, times, y) {
     fn <- eval(parse(text = fn))
     fit.lm <-  tryCatch({
       fit   <- nls.lm(par = pars, lower = NULL, 
-                       upper = NULL,
-                       fn = fn, times = times,
-                       control = nls.lm.control(maxiter = 100),
-                       y = y)
+                      upper = NULL,
+                      fn = fn, times = times,
+                      control = nls.lm.control(maxiter = 100),
+                      y = y)
     },
     error = function(e) {
       print("Fit error")
@@ -187,8 +199,8 @@ server <- function(input, output, session) {
     )
     return(fit.lm)
   }
-    
-##############################
+  
+  ##############################
   
   plotData <- function(df) {
     p <- ggplot(data = df)
@@ -212,7 +224,7 @@ server <- function(input, output, session) {
     return(p)
   }
   
-#############################  
+  #############################  
   
   doSubject <- function() {
     
@@ -230,17 +242,17 @@ server <- function(input, output, session) {
       # the theoretical data can be determined by taking the derivative 
       theo_meas.data <- c(0,diff(theo_cum.data))
       
-    # Add noise to the theoretical measurement data
-    
-        if(error.type == "linear") {
+      # Add noise to the theoretical measurement data
+      
+      if(error.type == "linear") {
         # the error is dependent on the value of the data
         error      <- (as.numeric(input$errorl) * theo_meas.data / 100.) * 
-                       rnorm(length(theo_meas.data), 0, 1)
+          rnorm(length(theo_meas.data), 0, 1)
       } else if(error.type == "constant" ) {
         # the error is constant
         error      <- as.numeric(input$errorc) * rnorm(length(theo_meas.data), 0, 1)
       }
-    
+      
       # Add the noise to the theoretical measured data and make sure all data points are positive. 
       # This is an arbitrary step and causes a positive bias for the lower values
       exp.data   <- abs(theo_meas.data + error)
@@ -251,35 +263,35 @@ server <- function(input, output, session) {
       fit.data   <- urine(times, fit.out$par)
       
     } else if (input$type == "plasma") {
-        Cd       <- as.numeric(input$Cd)
-        ka       <- as.numeric(input$ka)
-        kel      <- as.numeric(input$kel)
-        tau      <- as.numeric(input$tau.p) 
-        
-        pars     <- list(Cd = Cd, ka = ka, kel = kel, tau = tau)
-        exp.data <- plasma(times, pars)
-        
+      Cd       <- as.numeric(input$Cd)
+      ka       <- as.numeric(input$ka)
+      kel      <- as.numeric(input$kel)
+      tau      <- as.numeric(input$tau.p) 
+      
+      pars     <- list(Cd = Cd, ka = ka, kel = kel, tau = tau)
+      exp.data <- plasma(times, pars)
+      
       # Add noise
-        if(error.type == "linear") {
-          error      <- (as.numeric(input$errorl) * exp.data / 100.) * 
-            rnorm(length(exp.data), 0, 1)
-        } else if(error.type == "constant" ) {
-          error      <- as.numeric(input$errorc) * rnorm(length(exp.data), 0, 1)
-        }
+      if(error.type == "linear") {
+        error      <- (as.numeric(input$errorl) * exp.data / 100.) * 
+          rnorm(length(exp.data), 0, 1)
+      } else if(error.type == "constant" ) {
+        error      <- as.numeric(input$errorc) * rnorm(length(exp.data), 0, 1)
+      }
       # Make sure all data points are positive
-        exp_to_fit.data   <- abs(exp.data + error)
-        
-        fit.out  <- doFit(pars, "plasma.res", times, exp_to_fit.data)
-        fit.data <- plasma(times, fit.out$par)
+      exp_to_fit.data   <- abs(exp.data + error)
+      
+      fit.out  <- doFit(pars, "plasma.res", times, exp_to_fit.data)
+      fit.data <- plasma(times, fit.out$par)
     }
     
     plot.data    <- c(exp_to_fit.data, fit.data)
     
     params.out   <- unlist(fit.out$par)
-
+    
     return(list(plot.data, params.out))
   }
-   
+  
   updateFunction <- function()  {   
     n.subjects                <- as.numeric(input$subjects)
     times                     <- as.numeric(input$times)
@@ -320,53 +332,53 @@ server <- function(input, output, session) {
     dd$select                 <- 1
   }
   
-#################################  
+  #################################  
   
-
-## Reactives  
   
-    df.data                         <- reactiveValues()
-    dd                              <- reactiveValues(select = NULL)
-
-    observe({
-      if(input$update.all == 0) {   # run at start-up
-         isolate({
-           updateFunction()
-         })
-      }
-    })  
-    
-    observeEvent(input$table_rows_selected ,{
-      dd$select   <- isolate(input$table_rows_selected)
-    })
+  ## Reactives  
   
-    observeEvent(input$type, {
-      updateFunction()
-    })
-    
-    
-    observeEvent(input$subjects, {
-      updateFunction()
-    })
-    
-    observeEvent(input$times, {
-      updateFunction()
-      updateSelectInput(session, "times", 
-                        selected = sort(as.numeric(input$times)))
-    })
-    
-    observeEvent(input$update.all, {
-      updateFunction()
-    })
- 
-    
-  ## Update single subject
-    
-    observeEvent(input$update.single, {
- 
-      n.subjects              <- as.numeric(input$subjects)
-      
+  df.data                         <- reactiveValues()
+  dd                              <- reactiveValues(select = NULL)
+  
+  observe({
+    if(input$update.all == 0) {   # run at start-up
       isolate({
+        updateFunction()
+      })
+    }
+  })  
+  
+  observeEvent(input$table_rows_selected ,{
+    dd$select   <- isolate(input$table_rows_selected)
+  })
+  
+  observeEvent(input$type, {
+    updateFunction()
+  })
+  
+  
+  observeEvent(input$subjects, {
+    updateFunction()
+  })
+  
+  observeEvent(input$times, {
+    updateFunction()
+    updateSelectInput(session, "times", 
+                      selected = sort(as.numeric(input$times)))
+  })
+  
+  observeEvent(input$update.all, {
+    updateFunction()
+  })
+  
+  
+  ## Update single subject
+  
+  observeEvent(input$update.single, {
+    
+    n.subjects              <- as.numeric(input$subjects)
+    
+    isolate({
       selected.subject        <- dd$select
       if(is.null(selected.subject)) {
         selected.subject      <- 1
@@ -374,76 +386,112 @@ server <- function(input, output, session) {
       if(selected.subject > n.subjects) {
         selected.subject      <- 1
       }
-  
+      
       subject.list                          <- doSubject()
-    
+      
       df.data$plots[, 2 + selected.subject] <- subject.list[[1]]
       df.data$table[selected.subject, -1]   <- subject.list[[2]]
       
-   # update subjects, means and std
+      # update subjects, means and std
       df.data$table[n.subjects + 1, -1] <- colMeans(df.data$table[1:n.subjects, -1 ], 
                                                     na.rm = TRUE)
       df.data$table[n.subjects + 2, -1] <- sapply(df.data$table[1:n.subjects, - 1],
                                                   function(x) sd(x, na.rm = TRUE))
-      })
-    
- })    
-    output$text1       <- renderText({
-      n.subjects       <- as.numeric(input$subjects)
-      displayed.plot   <- dd$select
-  
-      if(is.null(displayed.plot) ) {
-        displayed.plot <- 1
-      }
-      if(displayed.plot > n.subjects) {
-        displayed.plot <- 1
-        dd$select      <- 1
-      }
-      plot.text <- paste0("Subject ", displayed.plot)
-      plot.text
     })
     
-    output$plot1       <- renderPlot({
-      n.subjects       <- as.numeric(input$subjects)
-      displayed.plot    <- dd$select
-  
-      if(is.null(displayed.plot)) {
-        displayed.plot <- 1
-      }
-      if(displayed.plot > n.subjects) {
-        displayed.plot <- 1
-      }
-      req((2 + n.subjects) <= ncol(df.data$plots))
-      df               <- df.data$plots[, c(1, 2, 2 + displayed.plot)]
-      
-      colnames(df)     <- c("times", "type", "y")
-      p                <- plotData(df)
-      p
-    })
+  })    
+  output$text1       <- renderText({
+    n.subjects       <- as.numeric(input$subjects)
+    displayed.plot   <- dd$select
     
-    
-    output$table <- DT::renderDataTable({
-      par.table           <- df.data$table
-
-      colnames(par.table) <- colnames(df.data$table)
-      par.table[, 2] = round(x = par.table[,2],digits = 2)
-      par.table[, 3] = round(x = par.table[,3],digits = 3)
-      par.table[, 4] = round(x = par.table[,4],digits = 2)
-      if(input$type == "plasma") {
-        par.table[, 5] = round(x = par.table[, 5],digits = 3)
-      }
-      DT::datatable(par.table,
-        selection = list(mode = "single", target = "row", 
-                         selected = as.numeric(dd$select)), 
-        rownames = FALSE,
-        options = list(
-          paging = FALSE,
-          searching = FALSE,
-          dom = 't',
-          ordering = FALSE
-      )
-    ) 
+    if(is.null(displayed.plot) ) {
+      displayed.plot <- 1
+    }
+    if(displayed.plot > n.subjects) {
+      displayed.plot <- 1
+      dd$select      <- 1
+    }
+    plot.text <- paste0("Subject ", displayed.plot)
+    plot.text
   })
+  
+  output$plot1       <- renderPlot({
+    n.subjects       <- as.numeric(input$subjects)
+    displayed.plot    <- dd$select
+    
+    if(is.null(displayed.plot)) {
+      displayed.plot <- 1
+    }
+    if(displayed.plot > n.subjects) {
+      displayed.plot <- 1
+    }
+    req((2 + n.subjects) <= ncol(df.data$plots))
+    df               <- df.data$plots[, c(1, 2, 2 + displayed.plot)]
+    
+    colnames(df)     <- c("times", "type", "y")
+    p                <- plotData(df)
+    p
+  })
+  
+  
+  roundTable <- function() {
+    req(df.data$table)
+    par.table           <- df.data$table
+    
+    colnames(par.table) <- colnames(df.data$table)
+    par.table[, 2] = round(x = par.table[,2],digits = 2)
+    par.table[, 3] = round(x = par.table[,3],digits = 3)
+    par.table[, 4] = round(x = par.table[,4],digits = 2)
+    if(input$type == "plasma") {
+      par.table[, 5] = round(x = par.table[, 5],digits = 3)
+    }
+    par.table
+  }
+  
+  output$table <- DT::renderDataTable({
+    par.table           <- roundTable()
+    # subjects only, means and std are shown in summary_table
+    par.table           <- par.table[1:(nrow(par.table) - 2), ]
+    DT::datatable(par.table,
+                  selection = list(mode = "single", target = "row", 
+                                   selected = as.numeric(dd$select)), 
+                  rownames = FALSE,
+                  options = list(
+                    paging = FALSE,
+                    scrollY = "300px",
+                    scrollCollapse = TRUE,
+                    searching = FALSE,
+                    dom = 't',
+                    ordering = FALSE
+                  )
+    )
+  })
+  
+  output$summary_table <- DT::renderDataTable({
+    par.table           <- roundTable()
+    par.table           <- par.table[(nrow(par.table) - 1):nrow(par.table), ]
+    colnames(par.table)[1] <- "Statistic"
+    DT::datatable(par.table,
+                  selection = "none",
+                  rownames = FALSE,
+                  options = list(
+                    paging = FALSE,
+                    searching = FALSE,
+                    dom = 't',
+                    ordering = FALSE
+                  )
+    )
+  })
+  
+  # subjects followed by means and std, unrounded
+  output$export <- downloadHandler(
+    filename = function() {
+      paste0("nutrikinetics_", input$type, "_", Sys.Date(), ".csv")
+    },
+    content = function(file) {
+      write.csv(df.data$table, file, row.names = FALSE)
+    }
+  )
 }
 
 shinyApp(ui, server)
